@@ -1,0 +1,44 @@
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+
+# ---- Node.js ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+.env
+.venv/
+venv/
+backend/venv/
+.env.local
+
+# ---- Logs ----
+*.log
+logs/
+*.out
+*.pid
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- Misc ----
+*.bak
+*.tmp
+*.temp
+*.cache
+*.lock
