@@ -206,11 +206,17 @@ const PatientDashboard = ({ user, token, onLogout }) => {
   try {
     const severityString = convertSeverityToString(symptomForm.severity);
     
-    // First save the medical record
-    const { data: recordData } = await apiCall('/medical-records/create/', {
+    // Send symptoms array along with additional medical info
+    const symptomsArray = symptomForm.symptoms
+      .split(',')
+      .map(symptom => symptom.trim())
+      .filter(symptom => symptom.length > 0);
+    
+    // Single API call that creates both record and prediction
+    const { data: predictionData } = await apiCall('/predict/', {
       method: 'POST',
-      body: JSON.stringify({
-        symptoms: symptomForm.symptoms,
+      body: JSON.stringify({ 
+        symptoms: symptomsArray,
         duration: symptomForm.duration,
         severity: severityString,
         previous_conditions: symptomForm.previousConditions,
@@ -219,47 +225,35 @@ const PatientDashboard = ({ user, token, onLogout }) => {
       })
     });
     
-    if (recordData) {
-      setMedicalRecords(prev => [...prev, recordData]);
+    if (predictionData) {
+      // Refresh medical records and prediction history
+      fetchMedicalRecords();
+      fetchPredictionHistory();
       
-      // Then get AI prediction
-      const symptomsArray = symptomForm.symptoms
-        .split(',')
-        .map(symptom => symptom.trim())
-        .filter(symptom => symptom.length > 0);
-      
-      const { data: predictionData } = await apiCall('/predict/', {
-        method: 'POST',
-        body: JSON.stringify({ symptoms: symptomsArray })
+      // Display results
+      setAnalysisResult({
+        patientName: `${user.first_name} ${user.last_name}`,
+        analysisDate: new Date().toLocaleDateString(),
+        predictions: predictionData.top_predictions ? 
+          predictionData.top_predictions.map(pred => ({
+            condition: pred.disease,
+            probability: Math.round(pred.probability * 100),
+            severity: symptomForm.severity > 7 ? 'Severe' : symptomForm.severity > 4 ? 'Moderate' : 'Mild'
+          })) : 
+          [{
+            condition: predictionData.predicted_disease,
+            probability: Math.round(predictionData.confidence * 100),
+            severity: symptomForm.severity > 7 ? 'Severe' : symptomForm.severity > 4 ? 'Moderate' : 'Mild'
+          }],
+        confidence: predictionData.confidence,
+        matchedSymptoms: predictionData.matched_symptoms || [],
+        recommendations: [
+          'Consult with a healthcare professional',
+          'Monitor symptoms carefully',
+          'Rest and stay hydrated',
+          'Keep track of symptom progression'
+        ]
       });
-      
-      if (predictionData) {
-        setAnalysisResult({
-          patientName: `${user.first_name} ${user.last_name}`,
-          analysisDate: new Date().toLocaleDateString(),
-          predictions: predictionData.top_predictions ? 
-            predictionData.top_predictions.map(pred => ({
-              condition: pred.disease,
-              probability: Math.round(pred.probability * 100),
-              severity: symptomForm.severity > 7 ? 'Severe' : symptomForm.severity > 4 ? 'Moderate' : 'Mild'
-            })) : 
-            [{
-              condition: predictionData.predicted_disease,
-              probability: Math.round(predictionData.confidence * 100),
-              severity: symptomForm.severity > 7 ? 'Severe' : symptomForm.severity > 4 ? 'Moderate' : 'Mild'
-            }],
-          confidence: predictionData.confidence,
-          matchedSymptoms: predictionData.matched_symptoms || [],
-          recommendations: [
-            'Consult with a healthcare professional',
-            'Monitor symptoms carefully',
-            'Rest and stay hydrated',
-            'Keep track of symptom progression'
-          ]
-        });
-        
-        fetchPredictionHistory();
-      }
     }
   } catch (error) {
     console.error('Error submitting symptoms:', error);
